@@ -4,8 +4,8 @@ window.addEventListener('load', async () => {
   const ul = document.querySelector('ul');
   const rfrsh = document.querySelector('#refresh');
   const form = document.querySelector('form');
-  const username = 'jenna';
-  const greeting = form.elements.greeting;
+  const animalName = form.elements.animal_name;
+  const speciesId = form.elements.species_id;
   console.log('hello');
 
   if ('serviceWorker' in navigator) {
@@ -15,13 +15,13 @@ window.addEventListener('load', async () => {
       if ('sync' in registration) {
         form.addEventListener('submit', async (event) => {
           event.preventDefault();
-          const message = {
-            username,
-            greeting: greeting.value,
+          const animal = {
+            animalName: animalName.value,
+            species: speciesId.value,
           };
 
           try {
-            saveData('animals', message);
+            saveData('animals', animal);
             await registration.sync.register('send-message');
           } catch (error) {
             console.log('save error', error.message);
@@ -31,14 +31,26 @@ window.addEventListener('load', async () => {
     } catch (error) {
       console.log('serviceworker error');
     }
+
+    const channel = new BroadcastChannel('sw-messages');
+    channel.addEventListener('message', (event) => {
+      if (event.data.msg === 'reload_animals') {
+        init();
+      } else if (event.data.msg === 'old_data') {
+        ul.innerHTML = '';
+        event.data.animals.forEach((item) => {
+          ul.innerHTML += `<ul>Animal:${item.animalName}, Species: ${item.species.speciesName}, Category: ${item.species.category.categoryName}</ul>`;
+        });
+      }
+    });
   }
 
   const init = async () => {
     const data = [];
     try {
-      const greetings = await getGreetingsByUser(username);
-      for (const message of greetings) {
-        data.push(message);
+      const allAnimals = await getAnimals();
+      for (const animal of allAnimals) {
+        data.push(animal);
       }
     } catch (e) {
       console.log(e.message);
@@ -46,7 +58,7 @@ window.addEventListener('load', async () => {
 
     ul.innerHTML = '';
     data.forEach((item) => {
-      ul.innerHTML += `<ul>${item.username}: ${item.greeting}</ul>`;
+      ul.innerHTML += `<ul>Animal:${item.animalName}, Species: ${item.species.speciesName}, Category: ${item.species.category.categoryName}</ul>`;
     });
   };
 
